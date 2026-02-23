@@ -113,7 +113,7 @@ export function TaskCard({
           {taskTags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {taskTags.map((tag) => (
-                <TagBadge key={tag.id} tag={tag} size={1} />
+                <TagBadge key={tag.id} tag={tag} size="sm" />
               ))}
             </div>
           )}
