@@ -1,6 +1,8 @@
 "use client";
 
 import { Task } from "@/types/task";
+import { Tag } from "@/types/tag";
+import { TagBadge } from "./TagBadge";
 
 const priorityConfig = {
   low: { label: "Baixa", color: "bg-emerald-500/20 text-emerald-600 border-emerald-400/40 dark:text-emerald-400 dark:border-emerald-500/30" },
@@ -11,6 +13,7 @@ const priorityConfig = {
 interface TaskCardProps {
   task: Task;
   index: number;
+  tags: Tag[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onDragStart: (index: number) => void;
@@ -23,6 +26,7 @@ interface TaskCardProps {
 export function TaskCard({
   task,
   index,
+  tags,
   onToggle,
   onDelete,
   onDragStart,
@@ -33,6 +37,9 @@ export function TaskCard({
 }: TaskCardProps) {
   const priority = priorityConfig[task.priority];
   const isCompleted = task.status === "completed";
+  const taskTags = (task.tagIds ?? [])
+    .map((id) => tags.find((t) => t.id === id))
+    .filter((t): t is Tag => t !== undefined);
 
   return (
     <div
@@ -79,7 +86,8 @@ export function TaskCard({
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3 mb-1">
+          {/* Title row */}
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h3
               className={`font-semibold truncate ${
                 isCompleted
@@ -93,11 +101,24 @@ export function TaskCard({
               {priority.label}
             </span>
           </div>
+
+          {/* Description */}
           {task.description && (
             <p className={`text-sm line-clamp-2 ${isCompleted ? "line-through text-slate-300 dark:text-white/30" : "text-slate-500 dark:text-white/50"}`}>
               {task.description}
             </p>
           )}
+
+          {/* Tags row */}
+          {taskTags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {taskTags.map((tag) => (
+                <TagBadge key={tag.id} tag={tag} size="sm" />
+              ))}
+            </div>
+          )}
+
+          {/* Date */}
           <p className="mt-2 text-xs text-slate-400 dark:text-white/30">
             {new Date(task.createdAt).toLocaleDateString("pt-BR", {
               day: "2-digit",

@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { TaskPriority } from "@/types/task";
+import { Tag } from "@/types/tag";
+import { TagSelector } from "./TagSelector";
 
 interface AddTaskModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (title: string, description: string, priority: TaskPriority) => void;
+  onAdd: (title: string, description: string, priority: TaskPriority, tagIds: string[]) => void;
+  tags: Tag[];
+  onCreateTag: (name: string, color: string) => string;
+  onDeleteTag: (tagId: string) => void;
 }
 
 const priorities: { value: TaskPriority; label: string }[] = [
@@ -15,21 +20,33 @@ const priorities: { value: TaskPriority; label: string }[] = [
   { value: "high", label: "Alta" },
 ];
 
-export function AddTaskModal({ open, onClose, onAdd }: AddTaskModalProps) {
+export function AddTaskModal({ open, onClose, onAdd, tags, onCreateTag, onDeleteTag }: AddTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   if (!open) return null;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd(title.trim(), description.trim(), priority);
+    onAdd(title.trim(), description.trim(), priority, selectedTagIds);
     setTitle("");
     setDescription("");
     setPriority("medium");
+    setSelectedTagIds([]);
     onClose();
+  }
+
+  function handleToggleTag(tagId: string) {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
+  }
+
+  function handleCreateTag(name: string, color: string): string {
+    return onCreateTag(name, color);
   }
 
   return (
@@ -37,11 +54,13 @@ export function AddTaskModal({ open, onClose, onAdd }: AddTaskModalProps) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm dark:bg-black/60" onClick={onClose} />
       <form
         onSubmit={handleSubmit}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-gradient-to-b dark:from-gray-900 dark:to-gray-950 dark:shadow-2xl"
+        className="relative z-10 w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-gradient-to-b dark:from-gray-900 dark:to-gray-950 dark:shadow-2xl"
+        style={{ maxHeight: "calc(100vh - 2rem)" }}
       >
         <h2 className="mb-6 text-xl font-bold text-slate-900 dark:text-white">Nova Tarefa</h2>
 
         <div className="space-y-4">
+          {/* Title */}
           <div>
             <label htmlFor="title" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-white/70">
               Título *
@@ -57,6 +76,7 @@ export function AddTaskModal({ open, onClose, onAdd }: AddTaskModalProps) {
             />
           </div>
 
+          {/* Description */}
           <div>
             <label htmlFor="description" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-white/70">
               Descrição
@@ -71,6 +91,7 @@ export function AddTaskModal({ open, onClose, onAdd }: AddTaskModalProps) {
             />
           </div>
 
+          {/* Priority */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-white/70">Prioridade</label>
             <div className="flex gap-2">
@@ -90,6 +111,15 @@ export function AddTaskModal({ open, onClose, onAdd }: AddTaskModalProps) {
               ))}
             </div>
           </div>
+
+          {/* Tags */}
+          <TagSelector
+            tags={tags}
+            selectedTagIds={selectedTagIds}
+            onToggle={handleToggleTag}
+            onCreateTag={handleCreateTag}
+            onDeleteTag={onDeleteTag}
+          />
         </div>
 
         <div className="mt-6 flex gap-3 justify-end">

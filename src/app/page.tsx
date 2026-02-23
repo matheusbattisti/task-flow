@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useTasks } from "@/hooks/useTasks";
+import { useTags } from "@/hooks/useTags";
 import { Task } from "@/types/task";
 import { TaskCard } from "@/components/TaskCard";
 import { AddTaskModal } from "@/components/AddTaskModal";
@@ -9,6 +10,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { TaskCounter } from "@/components/TaskCounter";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TagFilterBar } from "@/components/TagFilterBar";
 
 export default function Home() {
   const {
@@ -16,15 +18,20 @@ export default function Home() {
     allTasks,
     filter,
     setFilter,
+    tagFilter,
+    setTagFilter,
     addTask,
     toggleStatus,
     deleteTask,
     reorderTasks,
     exportTasks,
     importTasks,
+    removeTagFromAllTasks,
     counts,
     mounted,
   } = useTasks();
+
+  const { tags, createTag, deleteTag } = useTags();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
@@ -97,6 +104,16 @@ export default function Home() {
     [importTasks]
   );
 
+  // When a tag is deleted, clear tag filter if it was active and clean tasks
+  const handleDeleteTag = useCallback(
+    (tagId: string) => {
+      deleteTag(tagId);
+      removeTagFromAllTasks(tagId);
+      if (tagFilter === tagId) setTagFilter(null);
+    },
+    [deleteTag, removeTagFromAllTasks, tagFilter, setTagFilter]
+  );
+
   if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -104,6 +121,13 @@ export default function Home() {
       </div>
     );
   }
+
+  const emptyMessage =
+    tagFilter !== null
+      ? "Nenhuma tarefa com esta tag"
+      : filter !== "all"
+        ? "Nenhuma tarefa com este filtro"
+        : "Clique em \"Nova Tarefa\" para começar";
 
   return (
     <div className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
@@ -125,11 +149,18 @@ export default function Home() {
         </div>
 
         {/* Counter */}
-        <div className="mb-8 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
           <TaskCounter counts={counts} />
         </div>
 
-        {/* Actions */}
+        {/* Tag filter */}
+        {tags.length > 0 && (
+          <div className="mb-4">
+            <TagFilterBar tags={tags} activeTagId={tagFilter} onChange={setTagFilter} />
+          </div>
+        )}
+
+        {/* Status filter + actions */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <FilterBar current={filter} onChange={setFilter} counts={counts} />
           <div className="flex items-center gap-2">
@@ -179,11 +210,7 @@ export default function Home() {
                 </svg>
               </div>
               <p className="font-medium text-slate-400 dark:text-white/40">Nenhuma tarefa encontrada</p>
-              <p className="mt-1 text-sm text-slate-300 dark:text-white/25">
-                {filter === "all"
-                  ? "Clique em \"Nova Tarefa\" para começar"
-                  : "Nenhuma tarefa com este filtro"}
-              </p>
+              <p className="mt-1 text-sm text-slate-300 dark:text-white/25">{emptyMessage}</p>
             </div>
           ) : (
             tasks.map((task, filteredIdx) => {
@@ -193,6 +220,7 @@ export default function Home() {
                   key={task.id}
                   task={task}
                   index={filteredIdx}
+                  tags={tags}
                   onToggle={toggleStatus}
                   onDelete={handleDeleteRequest}
                   onDragStart={handleDragStart}
@@ -207,7 +235,14 @@ export default function Home() {
         </div>
       </div>
 
-      <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={addTask} />
+      <AddTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onAdd={addTask}
+        tags={tags}
+        onCreateTag={createTag}
+        onDeleteTag={handleDeleteTag}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}

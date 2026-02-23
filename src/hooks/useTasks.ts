@@ -22,6 +22,7 @@ function saveTasks(tasks: Task[]) {
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>(getInitialTasks);
   const [filter, setFilter] = useState<"all" | TaskStatus>("all");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const mounted = typeof window !== "undefined";
   const isFirstRender = useRef(true);
 
@@ -34,13 +35,14 @@ export function useTasks() {
   }, [tasks]);
 
   const addTask = useCallback(
-    (title: string, description: string, priority: TaskPriority) => {
+    (title: string, description: string, priority: TaskPriority, tagIds: string[] = []) => {
       const newTask: Task = {
         id: crypto.randomUUID(),
         title,
         description,
         status: "pending",
         priority,
+        tagIds,
         createdAt: new Date().toISOString(),
       };
       setTasks((prev) => [newTask, ...prev]);
@@ -84,13 +86,22 @@ export function useTasks() {
   const importTasks = useCallback((imported: Task[]) => {
     setTasks((prev) => {
       const existingIds = new Set(prev.map((t) => t.id));
-      const newTasks = imported.filter((t) => !existingIds.has(t.id));
+      const newTasks = imported
+        .filter((t) => !existingIds.has(t.id))
+        .map((t) => ({ ...t, tagIds: t.tagIds ?? [] }));
       return [...newTasks, ...prev];
     });
   }, []);
 
-  const filtered =
-    filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
+  const removeTagFromAllTasks = useCallback((tagId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => ({ ...t, tagIds: (t.tagIds ?? []).filter((id) => id !== tagId) }))
+    );
+  }, []);
+
+  const filtered = tasks
+    .filter((t) => filter === "all" || t.status === filter)
+    .filter((t) => tagFilter === null || (t.tagIds ?? []).includes(tagFilter));
 
   const counts = {
     all: tasks.length,
@@ -103,12 +114,15 @@ export function useTasks() {
     allTasks: tasks,
     filter,
     setFilter,
+    tagFilter,
+    setTagFilter,
     addTask,
     toggleStatus,
     deleteTask,
     reorderTasks,
     exportTasks,
     importTasks,
+    removeTagFromAllTasks,
     counts,
     mounted,
   };
