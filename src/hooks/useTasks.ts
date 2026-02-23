@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 
 const STORAGE_KEY = "task-flow-tasks";
 
-function loadTasks(): Task[] {
+function getInitialTasks(): Task[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -20,18 +20,18 @@ function saveTasks(tasks: Task[]) {
 }
 
 export function useTasks() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(getInitialTasks);
   const [filter, setFilter] = useState<"all" | TaskStatus>("all");
-  const [mounted, setMounted] = useState(false);
+  const mounted = typeof window !== "undefined";
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    setTasks(loadTasks());
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted) saveTasks(tasks);
-  }, [tasks, mounted]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    saveTasks(tasks);
+  }, [tasks]);
 
   const addTask = useCallback(
     (title: string, description: string, priority: TaskPriority) => {
