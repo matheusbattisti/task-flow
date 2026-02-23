@@ -62,6 +62,33 @@ export function useTasks() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const reorderTasks = useCallback((fromIndex: number, toIndex: number) => {
+    setTasks((prev) => {
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated;
+    });
+  }, []);
+
+  const exportTasks = useCallback(() => {
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `taskflow-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [tasks]);
+
+  const importTasks = useCallback((imported: Task[]) => {
+    setTasks((prev) => {
+      const existingIds = new Set(prev.map((t) => t.id));
+      const newTasks = imported.filter((t) => !existingIds.has(t.id));
+      return [...newTasks, ...prev];
+    });
+  }, []);
+
   const filtered =
     filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
 
@@ -71,5 +98,18 @@ export function useTasks() {
     completed: tasks.filter((t) => t.status === "completed").length,
   };
 
-  return { tasks: filtered, filter, setFilter, addTask, toggleStatus, deleteTask, counts, mounted };
+  return {
+    tasks: filtered,
+    allTasks: tasks,
+    filter,
+    setFilter,
+    addTask,
+    toggleStatus,
+    deleteTask,
+    reorderTasks,
+    exportTasks,
+    importTasks,
+    counts,
+    mounted,
+  };
 }

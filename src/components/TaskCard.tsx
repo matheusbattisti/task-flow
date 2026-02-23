@@ -10,21 +10,64 @@ const priorityConfig = {
 
 interface TaskCardProps {
   task: Task;
+  index: number;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onDragStart: (index: number) => void;
+  onDragOver: (e: React.DragEvent, index: number) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
+  isDragOver: boolean;
 }
 
-export function TaskCard({ task, onToggle, onDelete }: TaskCardProps) {
+export function TaskCard({
+  task,
+  index,
+  onToggle,
+  onDelete,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  isDragging,
+  isDragOver,
+}: TaskCardProps) {
   const priority = priorityConfig[task.priority];
   const isCompleted = task.status === "completed";
 
   return (
     <div
-      className={`group relative rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/[0.07] ${
-        isCompleted ? "opacity-60" : ""
-      }`}
+      draggable
+      onDragStart={() => onDragStart(index)}
+      onDragOver={(e) => onDragOver(e, index)}
+      onDragEnd={onDragEnd}
+      className={`group relative rounded-xl border p-5 backdrop-blur-sm transition-all ${
+        isDragging
+          ? "scale-[1.02] border-violet-500/50 bg-violet-500/10 opacity-80 shadow-lg shadow-violet-500/10"
+          : isDragOver
+            ? "border-violet-400/40 bg-white/[0.08]"
+            : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/[0.07]"
+      } ${isCompleted ? "opacity-60" : ""}`}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
+        {/* Drag handle */}
+        <div
+          className="mt-1 flex shrink-0 cursor-grab flex-col gap-[3px] py-1 opacity-0 transition-opacity group-hover:opacity-40 hover:!opacity-70 active:cursor-grabbing"
+          aria-label="Arrastar para reordenar"
+        >
+          <div className="flex gap-[3px]">
+            <span className="h-[3px] w-[3px] rounded-full bg-white" />
+            <span className="h-[3px] w-[3px] rounded-full bg-white" />
+          </div>
+          <div className="flex gap-[3px]">
+            <span className="h-[3px] w-[3px] rounded-full bg-white" />
+            <span className="h-[3px] w-[3px] rounded-full bg-white" />
+          </div>
+          <div className="flex gap-[3px]">
+            <span className="h-[3px] w-[3px] rounded-full bg-white" />
+            <span className="h-[3px] w-[3px] rounded-full bg-white" />
+          </div>
+        </div>
+
         <button
           onClick={() => onToggle(task.id)}
           className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
