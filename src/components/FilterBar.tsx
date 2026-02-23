@@ -26,13 +26,11 @@ export function FilterBar({ current, onChange, counts }: FilterBarProps) {
           className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
             current === f.value
               ? "bg-violet-600 text-white"
-              : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
+              : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white/70"
           }`}
         >
           {f.label}
-          <span className="ml-1.5 text-xs opacity-70">
-            {counts[f.value]}
-          </span>
+          <span className="ml-1.5 text-xs opacity-70">{counts[f.value]}</span>
         </button>
       ))}
     </div>
