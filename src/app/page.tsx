@@ -2,12 +2,15 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useTasks } from "@/hooks/useTasks";
+import { useTags } from "@/hooks/useTags";
 import { Task } from "@/types/task";
 import { TaskCard } from "@/components/TaskCard";
 import { AddTaskModal } from "@/components/AddTaskModal";
 import { FilterBar } from "@/components/FilterBar";
 import { TaskCounter } from "@/components/TaskCounter";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { TagFilterBar } from "@/components/TagFilterBar";
 
 export default function Home() {
   const {
@@ -15,26 +18,25 @@ export default function Home() {
     allTasks,
     filter,
     setFilter,
+    tagFilter,
+    setTagFilter,
     addTask,
     toggleStatus,
     deleteTask,
     reorderTasks,
     exportTasks,
     importTasks,
+    removeTagFromAllTasks,
     counts,
     mounted,
   } = useTasks();
 
+  const { tags, createTag, deleteTag } = useTags();
+
   const [modalOpen, setModalOpen] = useState(false);
-
-  // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
-
-  // Drag and drop state
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-  // File input ref for import
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDeleteRequest = useCallback(
@@ -52,7 +54,6 @@ export default function Home() {
     }
   }, [deleteTarget, deleteTask]);
 
-  // Drag handlers – work on the full (unfiltered) list
   const handleDragStart = useCallback(
     (filteredIndex: number) => {
       const task = tasks[filteredIndex];
@@ -80,7 +81,6 @@ export default function Home() {
     setDragOverIndex(null);
   }, [dragIndex, dragOverIndex, reorderTasks]);
 
-  // Import handler
   const handleImport = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -93,18 +93,25 @@ export default function Home() {
           const valid = tasksArray.filter(
             (t) => t.id && t.title && t.status && t.priority && t.createdAt
           );
-          if (valid.length > 0) {
-            importTasks(valid);
-          }
+          if (valid.length > 0) importTasks(valid);
         } catch {
           // invalid JSON — silently ignore
         }
       };
       reader.readAsText(file);
-      // reset so re-importing same file works
       e.target.value = "";
     },
     [importTasks]
+  );
+
+  // When a tag is deleted, clear tag filter if it was active and clean tasks
+  const handleDeleteTag = useCallback(
+    (tagId: string) => {
+      deleteTag(tagId);
+      removeTagFromAllTasks(tagId);
+      if (tagFilter === tagId) setTagFilter(null);
+    },
+    [deleteTag, removeTagFromAllTasks, tagFilter, setTagFilter]
   );
 
   if (!mounted) {
@@ -115,42 +122,52 @@ export default function Home() {
     );
   }
 
+  const emptyMessage =
+    tagFilter !== null
+      ? "Nenhuma tarefa com esta tag"
+      : filter !== "all"
+        ? "Nenhuma tarefa com este filtro"
+        : "Clique em \"Nova Tarefa\" para começar";
+
   return (
     <div className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500">
-              <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500">
+                <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">TaskFlow</h1>
             </div>
-            <h1 className="text-3xl font-bold text-white">TaskFlow</h1>
+            <p className="text-slate-400 mt-1 dark:text-white/40">Gerencie suas tarefas de forma simples e eficiente</p>
           </div>
-          <p className="text-white/40 mt-1">Gerencie suas tarefas de forma simples e eficiente</p>
+          <ThemeToggle />
         </div>
 
         {/* Counter */}
-        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
           <TaskCounter counts={counts} />
         </div>
 
-        {/* Actions */}
+        {/* Tag filter */}
+        {tags.length > 0 && (
+          <div className="mb-4">
+            <TagFilterBar tags={tags} activeTagId={tagFilter} onChange={setTagFilter} />
+          </div>
+        )}
+
+        {/* Status filter + actions */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <FilterBar current={filter} onChange={setFilter} counts={counts} />
           <div className="flex items-center gap-2">
-            {/* Import */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white/80"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:shadow-none dark:hover:bg-white/10 dark:hover:text-white/80"
               title="Importar tarefas"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -159,11 +176,10 @@ export default function Home() {
               <span className="hidden sm:inline">Importar</span>
             </button>
 
-            {/* Export */}
             <button
               onClick={exportTasks}
               disabled={allTasks.length === 0}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/10 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:shadow-none dark:hover:bg-white/10 dark:hover:text-white/80"
               title="Exportar tarefas"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -172,7 +188,6 @@ export default function Home() {
               <span className="hidden sm:inline">Exportar</span>
             </button>
 
-            {/* New Task */}
             <button
               onClick={() => setModalOpen(true)}
               className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
@@ -188,18 +203,14 @@ export default function Home() {
         {/* Task List */}
         <div className="space-y-3">
           {tasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-                <svg className="h-8 w-8 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-16 text-center dark:border-white/10">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-white/5">
+                <svg className="h-8 w-8 text-slate-300 dark:text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
-              <p className="text-white/40 font-medium">Nenhuma tarefa encontrada</p>
-              <p className="text-sm text-white/25 mt-1">
-                {filter === "all"
-                  ? "Clique em \"Nova Tarefa\" para começar"
-                  : "Nenhuma tarefa com este filtro"}
-              </p>
+              <p className="font-medium text-slate-400 dark:text-white/40">Nenhuma tarefa encontrada</p>
+              <p className="mt-1 text-sm text-slate-300 dark:text-white/25">{emptyMessage}</p>
             </div>
           ) : (
             tasks.map((task, filteredIdx) => {
@@ -209,6 +220,7 @@ export default function Home() {
                   key={task.id}
                   task={task}
                   index={filteredIdx}
+                  tags={tags}
                   onToggle={toggleStatus}
                   onDelete={handleDeleteRequest}
                   onDragStart={handleDragStart}
@@ -223,8 +235,14 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Modals */}
-      <AddTaskModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={addTask} />
+      <AddTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onAdd={addTask}
+        tags={tags}
+        onCreateTag={createTag}
+        onDeleteTag={handleDeleteTag}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}

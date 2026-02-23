@@ -8,4 +8,5 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   createdAt: string;
+  tagIds: string[];
 }
